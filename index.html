@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동적 분수 계산기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            touch-action: manipulation;
+        }
+        .input-number {
+            width: 80px;
+            text-align: center;
+            border: 2px solid #D1D5DB;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-number:focus {
+            outline: none;
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3);
+        }
+        .input-number::placeholder {
+            font-size: 1.1rem;
+            color: #9CA3AF;
+        }
+        .calc-button {
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        .calc-button:active {
+            transform: scale(0.95);
+        }
+        #animation-canvas {
+            background-color: #F9FAFB;
+            border-radius: 0.75rem;
+            border: 1px solid #E5E7EB;
+        }
+        /* 슬라이더 스타일 */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #E5E7EB;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #4F46E5;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: #4F46E5;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-indigo-700">움직이는 분수 놀이! 🎨</h1>
+            <p class="text-md md:text-lg text-gray-600 mt-2">자연수와 분수를 더하고 빼며 원리를 배워봐요.</p>
+        </header>
+
+        <main class="bg-white p-6 rounded-2xl shadow-lg">
+            <!-- 입력 섹션 -->
+            <div class="bg-gray-100 p-6 rounded-xl mb-6">
+                <div class="flex flex-col sm:flex-row items-center justify-around gap-4">
+                    <!-- 숫자 1 입력 -->
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="whole1" class="input-number" min="0" placeholder="자연수">
+                        <div class="flex flex-col items-center">
+                            <input type="number" id="num1" class="input-number !w-16 !text-xl" min="0" placeholder="분자">
+                            <hr class="w-12 border-2 border-gray-800 my-1">
+                            <input type="number" id="den1" class="input-number !w-16 !text-xl" min="2" max="20" placeholder="분모">
+                        </div>
+                    </div>
+
+                    <!-- 연산자 -->
+                    <div class="flex items-center gap-4">
+                        <select id="operator" class="text-4xl font-bold h-16 bg-white border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500">
+                            <option value="add">+</option>
+                            <option value="subtract">-</option>
+                        </select>
+                    </div>
+
+                    <!-- 숫자 2 입력 -->
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="whole2" class="input-number" min="0" placeholder="자연수">
+                        <div class="flex flex-col items-center">
+                            <input type="number" id="num2" class="input-number !w-16 !text-xl" min="0" placeholder="분자">
+                            <hr class="w-12 border-2 border-gray-800 my-1">
+                            <input type="number" id="den2" class="input-number !w-16 !text-xl" min="2" max="20" placeholder="분모">
+                        </div>
+                    </div>
+                </div>
+                 <div class="text-center mt-4 text-sm text-indigo-600">
+                    <p>💡 분수가 포함된 계산의 경우, 분모를 꼭 입력해주세요.</p>
+                </div>
+            </div>
+            
+            <div class="text-center mb-6">
+                <button id="calculate-btn" class="calc-button w-full md:w-auto bg-indigo-600 text-white font-bold py-3 px-10 rounded-lg text-xl hover:bg-indigo-700 shadow-md">
+                    계산 시작!
+                </button>
+            </div>
+
+            <!-- 애니메이션 및 결과 섹션 -->
+            <div id="result-section" class="hidden">
+                <h2 class="text-2xl font-bold text-center mb-4">계산 과정을 살펴볼까요? 👀</h2>
+                <canvas id="animation-canvas" width="800" height="400"></canvas>
+                
+                <!-- 슬라이더 컨트롤 -->
+                <div id="slider-controls" class="mt-4 p-4 bg-gray-100 rounded-lg">
+                    <p id="step-description" class="text-center text-lg font-semibold text-indigo-800 mb-3"></p>
+                    <div class="flex items-center gap-4">
+                        <button id="play-pause-btn" class="p-2 bg-indigo-500 text-white rounded-full hover:bg-indigo-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" id="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" id="pause-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="hidden"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                        </button>
+                        <input type="range" id="step-slider" min="0" value="0">
+                    </div>
+                </div>
+
+                <div id="result-text" class="hidden text-center text-3xl font-bold mt-4 p-4 bg-green-100 text-green-800 rounded-lg"></div>
+                <div id="error-message" class="hidden text-center bg-red-100 text-red-700 p-4 rounded-lg mt-4"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM 요소
+        const whole1Input = document.getElementById('whole1');
+        const num1Input = document.getElementById('num1');
+        const den1Input = document.getElementById('den1');
+        const whole2Input = document.getElementById('whole2');
+        const num2Input = document.getElementById('num2');
+        const den2Input = document.getElementById('den2');
+        const operatorSelect = document.getElementById('operator');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const resultSection = document.getElementById('result-section');
+        const resultText = document.getElementById('result-text');
+        const errorMessage = document.getElementById('error-message');
+        const canvas = document.getElementById('animation-canvas');
+        const ctx = canvas.getContext('2d');
+        const sliderControls = document.getElementById('slider-controls');
+        const stepSlider = document.getElementById('step-slider');
+        const stepDescription = document.getElementById('step-description');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+
+        // 상태 변수
+        let animationState = {};
+        let autoPlayInterval;
+
+        const color1 = '#6366F1';
+        const color2 = '#14B8A6';
+        
+        // 이벤트 리스너
+        calculateBtn.addEventListener('click', setupAnimation);
+        stepSlider.addEventListener('input', () => {
+            pauseAutoPlay();
+            animationState.currentStep = parseInt(stepSlider.value);
+            drawStep(animationState.currentStep);
+        });
+        playPauseBtn.addEventListener('click', () => {
+            if (autoPlayInterval) {
+                pauseAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+        }
+
+        function hideError() {
+            errorMessage.textContent = '';
+            errorMessage.classList.add('hidden');
+        }
+
+        function setupAnimation() {
+            if (autoPlayInterval) clearInterval(autoPlayInterval);
+
+            const w1 = parseInt(whole1Input.value) || 0;
+            const n1 = parseInt(num1Input.value) || 0;
+            const d1_val = den1Input.value;
+            const w2 = parseInt(whole2Input.value) || 0;
+            const n2 = parseInt(num2Input.value) || 0;
+            const d2_val = den2Input.value;
+            const operator = operatorSelect.value;
+
+            if (d1_val && d2_val && d1_val !== d2_val) {
+                showError("초등학교 4학년에서는 분모가 같은 분수의 덧셈과 뺄셈만 배워요!");
+                return;
+            }
+            let d1 = parseInt(d1_val);
+            let d2 = parseInt(d2_val);
+            if (!d1 && !d2) {
+                if (n1 > 0 || n2 > 0) { showError("분자를 입력했다면 분모도 입력해야 해요."); return; }
+                d1 = d2 = 5;
+            } else if (!d1) { d1 = d2; } 
+              else if (!d2) { d2 = d1; }
+
+            if ((w1 === 0 && n1 === 0) && (w2 === 0 && n2 === 0)) { showError("계산할 숫자를 입력해주세요."); return; }
+            const den = d1;
+            const totalNum1 = w1 * den + n1;
+            const totalNum2 = w2 * den + n2;
+            if (operator === 'subtract' && totalNum1 < totalNum2) { showError("결과가 음수입니다. 첫 번째 숫자가 더 커야 해요."); return; }
+
+            hideError();
+            resultSection.classList.remove('hidden');
+            resultText.classList.add('hidden');
+            sliderControls.classList.remove('hidden');
+
+            animationState = {
+                w1, n1, w2, n2, den, operator,
+                currentStep: 0,
+                steps: [],
+                totalSteps: 0
+            };
+
+            if (operator === 'add') {
+                animationState.steps = ["계산 준비", "자연수 더하기", "분수 더하기", "결과 확인"];
+            } else {
+                animationState.steps = ["계산 준비", "뺄 부분 확인하기", "덜어내기", "결과 확인"];
+            }
+            animationState.totalSteps = animationState.steps.length - 1;
+
+            stepSlider.max = animationState.totalSteps;
+            stepSlider.value = 0;
+            drawStep(0);
+            startAutoPlay();
+        }
+
+        function startAutoPlay() {
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            
+            if (animationState.currentStep >= animationState.totalSteps) {
+                animationState.currentStep = 0;
+            }
+
+            autoPlayInterval = setInterval(() => {
+                if (animationState.currentStep < animationState.totalSteps) {
+                    animationState.currentStep++;
+                    stepSlider.value = animationState.currentStep;
+                    drawStep(animationState.currentStep);
+                } else {
+                    pauseAutoPlay();
+                }
+            }, 1500); // 1.5초 간격으로 자동 재생
+        }
+
+        function pauseAutoPlay() {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        }
+
+        function drawStep(step) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stepDescription.textContent = `[${step + 1}단계] ${animationState.steps[step]}`;
+            
+            const { w1, n1, w2, n2, den, operator } = animationState;
+            const shapeWidth = 200, shapeHeight = 50, padding = 20, startX1 = 50, startX2 = canvas.width - shapeWidth - 50;
+            const resultX = (canvas.width - shapeWidth) / 2;
+
+            if (operator === 'add') {
+                // Step 0: Initial
+                if (step >= 0) {
+                    for (let i = 0; i < w1; i++) drawFractionShape(startX1, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color1);
+                    if (n1 > 0) drawFractionShape(startX1, 50 + w1 * (shapeHeight + padding), shapeWidth, shapeHeight, n1, den, color1);
+                    for (let i = 0; i < w2; i++) drawFractionShape(startX2, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color2);
+                    if (n2 > 0) drawFractionShape(startX2, 50 + w2 * (shapeHeight + padding), shapeWidth, shapeHeight, n2, den, color2);
+                }
+                // Step 1: Move wholes
+                if (step >= 1) {
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    for (let i = 0; i < w1; i++) drawFractionShape(startX1, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color1);
+                    if (n1 > 0) drawFractionShape(startX1, 50 + (w1+w2) * (shapeHeight + padding), shapeWidth, shapeHeight, n1, den, color1); // 분수 아래로 이동
+                    for (let i = 0; i < w2; i++) drawFractionShape(startX1, 50 + (w1+i) * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color2); // 자연수 이동 완료
+                    if (n2 > 0) drawFractionShape(startX2, 50 + w2 * (shapeHeight + padding), shapeWidth, shapeHeight, n2, den, color2);
+                }
+                // Step 2: Move fractions
+                if (step >= 2) {
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    for (let i = 0; i < w1 + w2; i++) drawFractionShape(startX1, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, i < w1 ? color1 : color2);
+                    
+                    const combinedN = n1 + n2;
+                    const newWholes = Math.floor(combinedN / den);
+                    const remN = combinedN % den;
+                    
+                    if(newWholes > 0) {
+                       const segments = [];
+                       if(n1 > 0) segments.push({count: n1, color: color1});
+                       if(n2 > 0) segments.push({count: n2, color: color2});
+                       drawMultiColorShape(startX1, 50 + (w1+w2) * (shapeHeight + padding), shapeWidth, shapeHeight, segments, den);
+                    }
+                    if(remN > 0 && newWholes === 0) {
+                       const segments = [];
+                       if(n1 > 0) segments.push({count: n1, color: color1});
+                       if(n2 > 0) segments.push({count: n2, color: color2});
+                       drawMultiColorShape(startX1, 50 + (w1+w2) * (shapeHeight + padding), shapeWidth, shapeHeight, segments, den);
+                    }
+                }
+                // Step 3: Final result
+                if (step >= 3) {
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    showResult(w1, n1, w2, n2, den, operator);
+                }
+            } else { // subtract
+                let w1_b = w1, n1_b = n1; // b for borrow
+                if (n1 < n2) { w1_b--; n1_b += den; }
+
+                // Step 0: Initial
+                if (step >= 0) {
+                    for (let i = 0; i < w1; i++) drawFractionShape(startX1, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color1);
+                    if (n1 > 0) drawFractionShape(startX1, 50 + w1 * (shapeHeight + padding), shapeWidth, shapeHeight, n1, den, color1);
+                    for (let i = 0; i < w2; i++) drawFractionShape(startX2, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color2);
+                    if (n2 > 0) drawFractionShape(startX2, 50 + w2 * (shapeHeight + padding), shapeWidth, shapeHeight, n2, den, color2);
+                }
+                // Step 1: Color parts to subtract
+                if (step >= 1) {
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    for (let i = 0; i < w1; i++) drawFractionShape(startX1, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color1);
+                    if (n1 > 0) drawFractionShape(startX1, 50 + w1 * (shapeHeight + padding), shapeWidth, shapeHeight, n1, den, color1);
+                    
+                    // 뺄 부분 색칠
+                    for (let i = 0; i < n2; i++) drawFractionShape(startX1 + (n1_b - 1 - i) * (shapeWidth/den), 50 + w1_b * (shapeHeight + padding), shapeWidth/den, shapeHeight, 1, 1, color2);
+                    for (let i = 0; i < w2; i++) drawFractionShape(startX1, 50 + (w1_b - 1 - i) * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color2);
+                }
+                // Step 2: Remove parts
+                if (step >= 2) {
+                     ctx.clearRect(0,0,canvas.width, canvas.height);
+                     const resultNum = (w1 * den + n1) - (w2 * den + n2);
+                     const wholes = Math.floor(resultNum / den);
+                     const rem = resultNum % den;
+                     for (let i = 0; i < wholes; i++) drawFractionShape(startX1, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color1);
+                     if (rem > 0) drawFractionShape(startX1, 50 + wholes * (shapeHeight + padding), shapeWidth, shapeHeight, rem, den, color1);
+                }
+                // Step 3: Final Result
+                if (step >= 3) {
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    showResult(w1, n1, w2, n2, den, operator);
+                }
+            }
+            
+            if (step === animationState.totalSteps) {
+                resultText.classList.remove('hidden');
+                pauseAutoPlay();
+            } else {
+                resultText.classList.add('hidden');
+            }
+        }
+        
+        // Helper functions
+        function drawFractionShape(x, y, width, height, numerator, denominator, color) {
+            const pieceWidth = width / denominator;
+            ctx.strokeStyle = '#4B5563';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = color;
+            for (let i = 0; i < numerator; i++) {
+                ctx.fillRect(x + i * pieceWidth, y, pieceWidth, height);
+                ctx.strokeRect(x + i * pieceWidth, y, pieceWidth, height);
+            }
+            ctx.fillStyle = '#F3F4F6';
+            for (let i = numerator; i < denominator; i++) {
+                ctx.fillRect(x + i * pieceWidth, y, pieceWidth, height);
+                ctx.strokeRect(x + i * pieceWidth, y, pieceWidth, height);
+            }
+        }
+        function drawMultiColorShape(x, y, width, height, segments, denominator) {
+            const pieceWidth = width / denominator;
+            let currentX = x;
+            let drawnPieces = 0;
+            segments.forEach(segment => {
+                ctx.fillStyle = segment.color;
+                for (let i = 0; i < segment.count; i++) {
+                    ctx.fillRect(currentX, y, pieceWidth, height);
+                    ctx.strokeRect(currentX, y, pieceWidth, height);
+                    currentX += pieceWidth;
+                    drawnPieces++;
+                }
+            });
+            ctx.fillStyle = '#F3F4F6';
+            for (let i = drawnPieces; i < denominator; i++) {
+                ctx.fillRect(currentX, y, pieceWidth, height);
+                ctx.strokeRect(currentX, y, pieceWidth, height);
+                currentX += pieceWidth;
+            }
+        }
+
+        function showResult(w1, n1, w2, n2, den, operator) {
+            const shapeWidth = 200, shapeHeight = 50, padding = 20;
+            const startX = (canvas.width - shapeWidth) / 2;
+            const totalNum1 = w1 * den + n1;
+            const totalNum2 = w2 * den + n2;
+            const resultNum = (operator === 'add') ? totalNum1 + totalNum2 : totalNum1 - totalNum2;
+            const resultWhole = Math.floor(resultNum / den);
+            const resultRem = resultNum % den;
+
+            if (operator === 'add') {
+                const combinedN = n1 + n2;
+                const newWholesFromFrac = Math.floor(combinedN / den);
+                const finalRem = combinedN % den;
+                let yPos = 50;
+                for (let i = 0; i < w1; i++) { drawFractionShape(startX, yPos, shapeWidth, shapeHeight, den, den, color1); yPos += shapeHeight + padding; }
+                for (let i = 0; i < w2; i++) { drawFractionShape(startX, yPos, shapeWidth, shapeHeight, den, den, color2); yPos += shapeHeight + padding; }
+                if (newWholesFromFrac > 0) {
+                     const segments = [];
+                     const n1ToFill = den - (n1 % den);
+                     if (n1 % den !== 0) {
+                         segments.push({count: n1 % den, color: color1});
+                         segments.push({count: n1ToFill, color: color2});
+                     } else {
+                         segments.push({count: den, color: color2});
+                     }
+                     drawMultiColorShape(startX, yPos, shapeWidth, shapeHeight, segments, den);
+                     yPos += shapeHeight + padding;
+                }
+                if (finalRem > 0) {
+                    const segments = [];
+                    const n1Part = n1 % den;
+                    if (n1Part > 0 && newWholesFromFrac === 0) segments.push({count: n1Part, color: color1});
+                    const n2Start = newWholesFromFrac > 0 ? (den - n1Part) % den : 0;
+                    const n2InRem = n2 - n2Start;
+                    if (n2InRem > 0) segments.push({count: n2InRem, color: color2});
+                    drawMultiColorShape(startX, yPos, shapeWidth, shapeHeight, segments, den);
+                }
+            } else { // subtract
+                for (let i = 0; i < resultWhole; i++) drawFractionShape(startX, 50 + i * (shapeHeight + padding), shapeWidth, shapeHeight, den, den, color1);
+                if (resultRem > 0) drawFractionShape(startX, 50 + resultWhole * (shapeHeight + padding), shapeWidth, shapeHeight, resultRem, den, color1);
+            }
+            
+            let resultString = "결과: ";
+            if (resultWhole === 0 && resultRem === 0) {
+                resultString += "0";
+            } else {
+                if (resultWhole > 0) resultString += `${resultWhole}`;
+                if (resultWhole > 0 && resultRem > 0) resultString += "과 ";
+                if (resultRem > 0) resultString += `${resultRem}/${den}`;
+            }
+            resultText.textContent = resultString;
+        }
+    </script>
+</body>
+</html>
